@@ -1,61 +1,65 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-
-// 导入页面
-import Layout from './components/Layout'
-import HomePage from './pages/HomePage'
-import SettingsPage from './pages/SettingsPage'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery } from 'react-query'
+import Header from './components/Header'
+import Footer from './components/Footer'
+import ApiKeyModal from './components/ApiKeyModal'
+import Home from './pages/Home'
 import MidjourneyPage from './pages/MidjourneyPage'
-import DallEPage from './pages/DallEPage'
-import HistoryPage from './pages/HistoryPage'
-import NotFoundPage from './pages/NotFoundPage'
-
-// 导入上下文
-import { ApiKeyProvider } from './contexts/ApiKeyContext'
-import { HistoryProvider } from './contexts/HistoryContext'
+import DalleGeneration from './pages/DalleGeneration'
+import TaskHistory from './pages/TaskHistory'
+import Settings from './pages/Settings'
+import { getApiKey, setApiKey } from './utils/storage'
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true)
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
+  const apiKey = getApiKey()
+  const location = useLocation()
+  const navigate = useNavigate()
 
+  // 检查是否设置了API密钥
   useEffect(() => {
-    // 模拟应用加载
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-    
-    return () => clearTimeout(timer)
-  }, [])
+    if (!apiKey && location.pathname !== '/') {
+      setIsApiKeyModalOpen(true)
+    }
+  }, [apiKey, location])
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-900">
-        <div className="flex flex-col items-center">
-          <img src="/logo.png" alt="MDTuTu Logo" className="w-20 h-20 mb-4" />
-          <div className="text-xl font-semibold text-white">MDTuTu 加载中...</div>
-          <div className="mt-4 w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-primary-500 animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    )
+  const handleApiKeySave = (key) => {
+    setApiKey(key)
+    setIsApiKeyModalOpen(false)
   }
 
   return (
-    <ApiKeyProvider>
-      <HistoryProvider>
+    <div className="flex flex-col min-h-screen">
+      <Header 
+        openApiKeyModal={() => setIsApiKeyModalOpen(true)} 
+        hasApiKey={!!apiKey}
+      />
+      
+      <main className="flex-grow container mx-auto px-4 py-6">
         <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<HomePage />} />
-            <Route path="midjourney" element={<MidjourneyPage />} />
-            <Route path="dalle" element={<DallEPage />} />
-            <Route path="history" element={<HistoryPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="404" element={<NotFoundPage />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Route>
+          <Route path="/" element={<Home />} />
+          <Route path="/midjourney" element={<MidjourneyPage />} />
+          <Route path="/dalle" element={<DalleGeneration />} />
+          <Route path="/history" element={<TaskHistory />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
-      </HistoryProvider>
-    </ApiKeyProvider>
+      </main>
+
+      <Footer />
+
+      <ApiKeyModal 
+        isOpen={isApiKeyModalOpen} 
+        onClose={() => {
+          setIsApiKeyModalOpen(false)
+          if (!apiKey && location.pathname !== '/') {
+            navigate('/')
+          }
+        }}
+        onSave={handleApiKeySave}
+        initialValue={apiKey || ''}
+      />
+    </div>
   )
 }
 
